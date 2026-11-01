@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+build/
+dist/
+
+# Credenciais e configuração local
+.env
+.env.*
+!.env.example
+
+# Arquivos gerados
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+*.db
+*.sqlite
+*.sqlite3
+tmp/
+
+# Editor e sistema operacional
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Material de referência externo ao produto
+desafio_tecnico_ai_eng_artefact.pdf
