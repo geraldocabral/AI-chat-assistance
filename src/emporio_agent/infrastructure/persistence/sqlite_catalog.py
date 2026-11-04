@@ -1,13 +1,17 @@
 """Adaptador de leitura do catálogo SQLite com consultas parametrizadas."""
 
+import json
 import sqlite3
 import unicodedata
 from contextlib import closing
+from datetime import date
 from decimal import Decimal
 from pathlib import Path
 
 from emporio_agent.application.ports.catalog import ProductSearch
+from emporio_agent.application.ports.product_details import ProductDetails
 from emporio_agent.domain.product import Product
+from emporio_agent.domain.promotion import Promotion
 
 
 SQLITE_MAX_INTEGER = 2**63 - 1
@@ -20,9 +24,30 @@ def _normalize(value: str) -> str:
     )
 
 
+def _to_product(row: sqlite3.Row) -> Product:
+    return Product(
+        product_id=row["product_id"],
+        name=row["name"],
+        category_id=row["category_id"],
+        category_name=row["category_name"],
+        description=row["description"],
+        price_brl=Decimal(row["price_cents"]) / 100,
+        stock_quantity=row["stock_quantity"],
+        status=row["status"],
+    )
+
+
 class SQLiteCatalog:
     def __init__(self, database: Path) -> None:
         self._database = database
+
+    def _connect(self) -> sqlite3.Connection:
+        uri = self._database.resolve().as_uri() + "?mode=ro"
+        connection = sqlite3.connect(uri, uri=True)
+        connection.execute("PRAGMA foreign_keys = ON")
+        connection.create_function("normalize", 1, _normalize, deterministic=True)
+        connection.row_factory = sqlite3.Row
+        return connection
 
     def search(self, filters: ProductSearch) -> list[Product]:
         conditions = []
@@ -52,19 +77,46 @@ class SQLiteCatalog:
             ORDER BY p.price_cents, p.product_id
             LIMIT ?
         """
-        # mode=ro impede alterações e não cria um banco vazio se o caminho estiver errado.
-        uri = self._database.resolve().as_uri() + "?mode=ro"
-        with closing(sqlite3.connect(uri, uri=True)) as connection:
-            connection.execute("PRAGMA foreign_keys = ON")
-            connection.create_function("normalize", 1, _normalize, deterministic=True)
-            connection.row_factory = sqlite3.Row
+        with closing(self._connect()) as connection:
             rows = connection.execute(statement, parameters).fetchall()
-        return [
-            Product(
-                product_id=row["product_id"], name=row["name"],
-                category_id=row["category_id"], category_name=row["category_name"],
-                description=row["description"], price_brl=Decimal(row["price_cents"]) / 100,
-                stock_quantity=row["stock_quantity"], status=row["status"],
+        return [_to_product(row) for row in rows]
+
+    def get_details(self, product_id: int) -> ProductDetails | None:
+        if product_id > SQLITE_MAX_INTEGER:
+            return None
+        with closing(self._connect()) as connection:
+            connection.execute("BEGIN")
+            row = connection.execute(
+                """
+                SELECT p.*, c.name AS category_name
+                FROM products AS p
+                JOIN categories AS c ON c.category_id = p.category_id
+                WHERE p.product_id = ?
+                """,
+                (product_id,),
+            ).fetchone()
+            if row is None:
+                return None
+            promotions = connection.execute(
+                """
+                SELECT promotion_id, product_id, discount_percent, description
+                FROM promotions
+                WHERE product_id = ? AND is_active = 1
+                ORDER BY promotion_id
+                """,
+                (product_id,),
+            ).fetchall()
+        return ProductDetails(
+            product=_to_product(row),
+            specs=json.loads(row["specs"]),
+            created_at=date.fromisoformat(row["created_at"]),
+            active_promotions=tuple(
+                Promotion(
+                    promotion_id=promotion["promotion_id"],
+                    product_id=promotion["product_id"],
+                    discount_percent=Decimal(promotion["discount_percent"]),
+                    description=promotion["description"],
+                )
+                for promotion in promotions
             )
-            for row in rows
-        ]
+        )
