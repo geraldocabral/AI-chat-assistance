@@ -93,41 +93,44 @@ def _convert(table: str, column: str, raw: str) -> Any:
     return value
 
 
-def load_csv_data(directory: Path) -> dict[str, list[dict[str, Any]]]:
-    """Carrega todas as tabelas ou interrompe com arquivo, linha e campo do erro.
-
-    Valores monetários são Decimal, datas são date e opcionais vazios são None.
-    Valores históricos de pedidos são preservados, sem recalcular pelo catálogo.
-    """
-    tables: dict[str, list[dict[str, Any]]] = {}
-    for table, columns in COLUMNS.items():
-        path = directory / f"{table}.csv"
-        rows = []
-        seen = set()
+def _convert_row(table: str, row: dict, location: str) -> dict[str, Any]:
+    if None in row or any(value is None for value in row.values()):
+        raise DataValidationError(f"{location}: quantidade de campos inválida")
+    converted = {}
+    for column in COLUMNS[table]:
         try:
-            with path.open(encoding="utf-8-sig", newline="") as stream:
-                reader = csv.DictReader(stream, strict=True)
-                if reader.fieldnames is None or sorted(reader.fieldnames) != sorted(columns):
-                    raise DataValidationError(f"{path.name}: colunas incompatíveis; esperadas: {', '.join(columns)}")
-                for row in reader:
-                    location = f"{path.name}, linha {reader.line_num}"
-                    if None in row or any(value is None for value in row.values()):
-                        raise DataValidationError(f"{location}: quantidade de campos inválida")
-                    converted = {}
-                    for column in columns:
-                        try:
-                            converted[column] = _convert(table, column, row[column])
-                        except (ValueError, InvalidOperation) as error:
-                            raise DataValidationError(f"{location}, campo {column}: {error}") from error
-                    key = tuple(converted[column] for column in PRIMARY_KEYS[table])
-                    if key in seen:
-                        raise DataValidationError(f"{location}: chave duplicada {key}")
-                    seen.add(key)
-                    rows.append(converted)
-        except (OSError, UnicodeError, csv.Error) as error:
-            raise DataValidationError(f"{path.name}: falha na leitura: {error}") from error
-        tables[table] = rows
+            converted[column] = _convert(table, column, row[column])
+        except (ValueError, InvalidOperation) as error:
+            raise DataValidationError(f"{location}, campo {column}: {error}") from error
+    return converted
 
+
+def _read_table(directory: Path, table: str) -> list[dict[str, Any]]:
+    path = directory / f"{table}.csv"
+    columns = COLUMNS[table]
+    rows = []
+    seen = set()
+    try:
+        with path.open(encoding="utf-8-sig", newline="") as stream:
+            reader = csv.DictReader(stream, strict=True)
+            if reader.fieldnames is None or sorted(reader.fieldnames) != sorted(columns):
+                raise DataValidationError(
+                    f"{path.name}: colunas incompatíveis; esperadas: {', '.join(columns)}"
+                )
+            for row in reader:
+                location = f"{path.name}, linha {reader.line_num}"
+                converted = _convert_row(table, row, location)
+                key = tuple(converted[column] for column in PRIMARY_KEYS[table])
+                if key in seen:
+                    raise DataValidationError(f"{location}: chave duplicada {key}")
+                seen.add(key)
+                rows.append(converted)
+    except (OSError, UnicodeError, csv.Error) as error:
+        raise DataValidationError(f"{path.name}: falha na leitura: {error}") from error
+    return rows
+
+
+def _validate_references(tables: dict[str, list[dict[str, Any]]]) -> None:
     for table, column, target in FOREIGN_KEYS:
         valid_ids = {row[column] for row in tables[target]}
         for row in tables[table]:
@@ -136,4 +139,14 @@ def load_csv_data(directory: Path) -> dict[str, list[dict[str, Any]]]:
                 raise DataValidationError(
                     f"{table}.csv, chave {key}, campo {column}: referência inexistente em {target}"
                 )
+
+
+def load_csv_data(directory: Path) -> dict[str, list[dict[str, Any]]]:
+    """Carrega e valida as tabelas, preservando os valores históricos dos pedidos.
+
+    Valores monetários são Decimal, datas são date e opcionais vazios são None.
+    Erros identificam o arquivo e, quando aplicável, a linha e o campo ou a chave.
+    """
+    tables = {table: _read_table(directory, table) for table in COLUMNS}
+    _validate_references(tables)
     return tables
