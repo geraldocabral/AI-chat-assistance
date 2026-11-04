@@ -63,3 +63,16 @@ Essa abordagem foi escolhida pelo tamanho reduzido do manual e por funcionar
 localmente, sem custo de API ou banco vetorial. A busca depende das palavras
 utilizadas e pode não reconhecer todas as formas de uma pergunta. Seus resultados
 são trechos de referência; a interpretação e a resposta serão integradas ao agente.
+
+## Consulta de pedidos
+
+Cada consulta exige o cliente associado à sessão e filtra o pedido por esse
+identificador no banco. Um pedido de outro cliente tem o mesmo retorno de um
+pedido inexistente, e os resultados não incluem nome, telefone ou e-mail.
+O identificador do cliente é fornecido pela aplicação, separado dos parâmetros
+que o agente poderá receber na ferramenta.
+
+Na demonstração, essa identidade será simulada; não existe autenticação real.
+Em produção, ela precisaria vir de uma sessão autenticada. O total histórico é
+preservado, e previsões de entrega não são tratadas como datas de recebimento.
+Não há consulta a transportadoras nem alteração de pedidos.
