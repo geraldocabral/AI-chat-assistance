@@ -20,3 +20,18 @@ Essa arquitetura foi escolhida para:
 A aplicação permanece em um único processo para simplificar a execução e o
 desenvolvimento. As abstrações serão adicionadas conforme houver necessidade,
 mantendo a estrutura proporcional ao tamanho do projeto.
+
+## Tratamento dos dados
+
+Os CSVs são preservados como fonte original. Antes da importação para SQLite,
+validamos campos obrigatórios, tipos, identificadores duplicados e referências
+entre tabelas.
+
+SQLite foi escolhido para facilitar filtros e consultas entre produtos,
+categorias, promoções e pedidos, sem precisar de um servidor de banco de dados.
+O agente acessará essas informações por ferramentas de consulta.
+
+Valores monetários são tratados com `Decimal` e armazenados em centavos inteiros
+para evitar imprecisões. A importação usa uma transação para preservar o banco
+anterior caso ocorra uma falha. O banco é gerado localmente e fica fora do Git,
+pois pode ser recriado a partir dos CSVs.
