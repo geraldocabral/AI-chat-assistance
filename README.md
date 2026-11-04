@@ -35,3 +35,19 @@ Valores monetários são tratados com `Decimal` e armazenados em centavos inteir
 para evitar imprecisões. A importação usa uma transação para preservar o banco
 anterior caso ocorra uma falha. O banco é gerado localmente e fica fora do Git,
 pois pode ser recriado a partir dos CSVs.
+
+## Regras de pagamento
+
+Os cálculos são feitos em Python com `Decimal`. Promoções não acumulam entre si
+nem com o desconto de 5% no PIX. Havendo várias promoções ativas para um produto,
+adotamos a de maior desconto; em empate, a de menor identificador.
+
+Para parcelamento, priorizamos a seção específica 3.1 do manual sobre a tabela
+geral. Interpretamos a ressalva de R$ 50 como parcela mínima para 2 a 3 vezes.
+De 4 a 6 vezes, o mínimo é R$ 80; de 7 a 12, R$ 100. Pagamento em uma vez não
+tem esse mínimo. Centavos restantes são distribuídos nas primeiras parcelas,
+preservando o total, e descontos são arredondados para centavos com `ROUND_HALF_UP`.
+
+As condições calculadas são para uma unidade disponível, sem frete e com uma
+única forma de pagamento. Produtos indisponíveis não recebem uma oferta de
+pagamento. Simulação de carrinho e pagamento combinado ficam fora desta etapa.
