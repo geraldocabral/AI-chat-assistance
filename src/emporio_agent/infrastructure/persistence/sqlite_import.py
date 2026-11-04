@@ -14,7 +14,6 @@ from typing import Any
 from emporio_agent.infrastructure.persistence.csv_source import COLUMNS, load_csv_data
 
 
-# Dinheiro é armazenado em centavos inteiros, sem arredondamento de ponto flutuante.
 SCHEMA = {
     "categories": "category_id INTEGER PRIMARY KEY, name TEXT NOT NULL, description TEXT NOT NULL",
     "customers": "customer_id INTEGER PRIMARY KEY, name TEXT NOT NULL, phone TEXT NOT NULL, email TEXT NOT NULL, city TEXT NOT NULL",

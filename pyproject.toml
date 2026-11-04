@@ -7,7 +7,7 @@ name = "emporio-da-musica-agent"
 version = "0.1.0"
 description = "Protótipo de assistente de atendimento da Empório da Música."
 requires-python = ">=3.11"
-dependencies = []
+dependencies = ["pypdf>=6.10,<7"]
 
 [tool.setuptools.packages.find]
 where = ["src"]

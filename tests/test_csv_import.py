@@ -57,7 +57,6 @@ class CsvImportTests(unittest.TestCase):
             self.assertEqual(connection.execute("SELECT price_cents FROM products WHERE product_id=81").fetchone()[0], 59990)
             self.assertIsNone(connection.execute("SELECT notes FROM orders WHERE order_id=1").fetchone()[0])
             self.assertEqual(connection.execute("PRAGMA foreign_key_check").fetchall(), [])
-            # Preserva o total histórico, mesmo quando difere do catálogo atual.
             self.assertEqual(connection.execute("SELECT total_cents FROM orders WHERE order_id=3").fetchone()[0], 345000)
 
     def test_reimport_does_not_duplicate_records(self):

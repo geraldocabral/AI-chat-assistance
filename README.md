@@ -51,3 +51,15 @@ preservando o total, e descontos são arredondados para centavos com `ROUND_HALF
 As condições calculadas são para uma unidade disponível, sem frete e com uma
 única forma de pagamento. Produtos indisponíveis não recebem uma oferta de
 pagamento. Simulação de carrinho e pagamento combinado ficam fora desta etapa.
+
+## Consulta às políticas
+
+O manual é extraído com `pypdf` e organizado por suas dez seções principais,
+mantendo regras e exceções juntas, com indicação do arquivo e das páginas.
+A busca textual ignora caixa e acentos, considera alguns termos equivalentes
+e dá maior peso a termos dos títulos e menos frequentes no documento.
+
+Essa abordagem foi escolhida pelo tamanho reduzido do manual e por funcionar
+localmente, sem custo de API ou banco vetorial. A busca depende das palavras
+utilizadas e pode não reconhecer todas as formas de uma pergunta. Seus resultados
+são trechos de referência; a interpretação e a resposta serão integradas ao agente.
