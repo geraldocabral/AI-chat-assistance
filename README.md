@@ -93,8 +93,9 @@ requisições. A chave é lida do ambiente e não deve ser versionada.
 Referências: [compatibilidade da API](https://ai.google.dev/gemini-api/docs/openai),
 [preços](https://ai.google.dev/gemini-api/docs/pricing)
 e [limites](https://ai.google.dev/gemini-api/docs/rate-limits).
-A qualidade das respostas e as chamadas reais ainda precisam ser validadas
-com uma chave local; testes simulados verificam o contrato da integração.
+Uma conversa real de busca de catálogo foi validada com Gemini, incluindo a
+chamada da ferramenta e a resposta baseada no SQLite. Os demais cenários ainda
+precisam de avaliação real; testes simulados verificam o contrato da integração.
 
 ## Fluxo de atendimento
 
@@ -110,6 +111,18 @@ uma resposta de indisponibilidade, preservando um histórico válido.
 
 As instruções definem persona, uso de fontes, escopo e tratamento de informações
 ausentes. Essas instruções orientam o modelo, mas a aderência precisa ser
-avaliada com conversas reais. Os testes atuais verificam a orquestração usando
-um modelo simulado. Logs registram duração, ferramentas e consumo de tokens
+avaliada com conversas reais. Os testes automatizados verificam a orquestração
+usando um modelo simulado. Logs registram duração, ferramentas e consumo de tokens
 quando informado pelo provedor, sem conteúdo de mensagens ou resultados.
+
+## Interface
+
+A interface inicial é um chat no terminal. Essa escolha permite demonstrar o
+atendimento e o contexto de conversa com poucas dependências. A sessão começa
+anônima; um cliente de demonstração pode ser selecionado explicitamente na
+inicialização, sem permitir troca de identidade por mensagem ao agente.
+
+O chat permite reiniciar o histórico e encerrar o atendimento. A configuração
+local pode ser carregada de `.env` com `python-dotenv`, preservando variáveis já
+definidas no ambiente. O banco é gerado a partir dos CSVs somente se ainda não
+existir; as execuções seguintes não reimportam os dados automaticamente.

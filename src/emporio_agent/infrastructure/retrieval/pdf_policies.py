@@ -49,7 +49,7 @@ def load_policy_sections(path: Path) -> tuple[PolicySection, ...]:
     try:
         with path.open("rb") as stream:
             reader = PdfReader(stream)
-            page_texts = [page.extract_text() or "" for page in reader.pages]
+            page_texts = [page.extract_text(extraction_mode="layout") or "" for page in reader.pages]
     except (OSError, PyPdfError, ValueError) as error:
         raise PolicyLoadError(f"{path.name}: não foi possível ler o manual") from error
     return _split_sections(page_texts, path.name)
