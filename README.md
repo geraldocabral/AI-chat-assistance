@@ -76,3 +76,22 @@ Na demonstração, essa identidade será simulada; não existe autenticação re
 Em produção, ela precisaria vir de uma sessão autenticada. O total histórico é
 preservado, e previsões de entrega não são tratadas como datas de recebimento.
 Não há consulta a transportadoras nem alteração de pedidos.
+
+## Provedor de IA
+
+A integração usa a API do Gemini, com o modelo `gemini-3.5-flash-lite`
+configurável por variável de ambiente. A escolha considera a oferta de cota
+gratuita, o suporte a ferramentas e o acesso à chave pelo Google AI Studio.
+Os limites efetivos dependem da conta e precisam ser conferidos antes da demonstração.
+
+O adaptador traduz mensagens e ferramentas para a API, mantendo o restante da
+aplicação independente do provedor. Usamos o endpoint de compatibilidade do Gemini
+para manter o formato de mensagens e ferramentas. Há timeout, limite de saída e tratamento
+de falhas de acesso, cota e respostas inválidas, sem repetição automática de
+requisições. A chave é lida do ambiente e não deve ser versionada.
+
+Referências: [compatibilidade da API](https://ai.google.dev/gemini-api/docs/openai),
+[preços](https://ai.google.dev/gemini-api/docs/pricing)
+e [limites](https://ai.google.dev/gemini-api/docs/rate-limits).
+A qualidade das respostas e as chamadas reais ainda precisam ser validadas
+com uma chave local; testes simulados verificam o contrato da integração.
