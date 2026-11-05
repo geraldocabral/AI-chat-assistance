@@ -8,7 +8,7 @@ from datetime import date
 from decimal import Decimal
 from pathlib import Path
 
-from emporio_agent.application.ports.catalog import ProductSearch
+from emporio_agent.application.ports.catalog import ProductSearch, ProductSearchResult
 from emporio_agent.application.ports.product_details import ProductDetails
 from emporio_agent.domain.product import Product
 from emporio_agent.domain.promotion import Promotion
@@ -49,7 +49,7 @@ class SQLiteCatalog:
         connection.row_factory = sqlite3.Row
         return connection
 
-    def search(self, filters: ProductSearch) -> list[Product]:
+    def search(self, filters: ProductSearch) -> ProductSearchResult:
         conditions = []
         parameters: list[str | int] = []
         if filters.name is not None:
@@ -63,10 +63,15 @@ class SQLiteCatalog:
             # Um teto superior à capacidade do banco inclui todos os preços armazenáveis.
             max_price = min(filters.max_price_brl, Decimal(SQLITE_MAX_INTEGER) / 100)
             parameters.append(int(max_price * 100))
+        if filters.min_price_brl is not None:
+            if filters.min_price_brl > Decimal(SQLITE_MAX_INTEGER) / 100:
+                conditions.append("0 = 1")
+            else:
+                conditions.append("p.price_cents >= ?")
+                parameters.append(int(filters.min_price_brl * 100))
         if filters.available_only:
             conditions.append("p.status = 'active' AND p.stock_quantity > 0")
         where = " AND ".join(conditions) if conditions else "1 = 1"
-        parameters.append(filters.limit)
         # O SQL é montado apenas com trechos fixos; valores entram como parâmetros.
         statement = f"""
             SELECT p.product_id, p.name, p.category_id, c.name AS category_name,
@@ -75,11 +80,23 @@ class SQLiteCatalog:
             JOIN categories AS c ON c.category_id = p.category_id
             WHERE {where}
             ORDER BY p.price_cents, p.product_id
-            LIMIT ?
+            LIMIT ? OFFSET ?
         """
         with closing(self._connect()) as connection:
-            rows = connection.execute(statement, parameters).fetchall()
-        return [_to_product(row) for row in rows]
+            connection.execute("BEGIN")
+            total = connection.execute(
+                f"""SELECT COUNT(*) FROM products AS p
+                    JOIN categories AS c ON c.category_id = p.category_id
+                    WHERE {where}""",
+                parameters,
+            ).fetchone()[0]
+            rows = connection.execute(
+                statement, [*parameters, filters.limit, min(filters.offset, SQLITE_MAX_INTEGER)],
+            ).fetchall()
+        return ProductSearchResult(
+            products=[_to_product(row) for row in rows], total_count=total,
+            offset=filters.offset, limit=filters.limit,
+        )
 
     def get_details(self, product_id: int) -> ProductDetails | None:
         if product_id > SQLITE_MAX_INTEGER:

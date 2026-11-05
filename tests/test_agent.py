@@ -57,9 +57,42 @@ class AgentToolsIntegrationTests(unittest.TestCase):
         result = self.run_tool("search_products", {"category": "Violões", "max_price_brl": "1000.00"})
         self.assertTrue(result["ok"])
         self.assertEqual(result["data"]["returned_count"], 5)
-        self.assertTrue(result["data"]["may_have_more"])
+        self.assertTrue(result["data"]["has_more"])
+        self.assertEqual(result["data"]["total_count"], 12)
+        self.assertEqual(result["data"]["next_offset"], 5)
         self.assertTrue(result["data"]["products"][0]["is_available"])
         self.assertIsInstance(result["data"]["products"][0]["price_brl"], str)
+
+    def test_range_and_next_page_are_available_to_the_model(self):
+        result = self.run_tool("search_products", {
+            "category": "Violões", "min_price_brl": "1500", "max_price_brl": "2000",
+        })
+        self.assertTrue(result["ok"])
+        self.assertEqual([product["product_id"] for product in result["data"]["products"]], [111, 114, 104])
+        self.assertEqual(result["data"]["total_count"], 3)
+        self.assertFalse(result["data"]["has_more"])
+        self.assertIsNone(result["data"]["next_offset"])
+        first = self.run_tool("search_products", {"category": "Violões", "max_price_brl": "2000"})["data"]
+        second = self.run_tool("search_products", {
+            "category": "Violões", "max_price_brl": "2000", "offset": first["next_offset"],
+        })["data"]
+        self.assertTrue(set(product["product_id"] for product in first["products"]).isdisjoint(
+            product["product_id"] for product in second["products"]
+        ))
+
+    def test_followup_range_uses_entire_catalog_not_previous_page(self):
+        model = ScriptedModel(
+            tool_reply("search_products", {"category": "Violões", "max_price_brl": "2000"}),
+            text_reply("Seleção inicial"),
+            tool_reply("search_products", {"category": "Violões", "min_price_brl": "1500", "max_price_brl": "2000"}, "call_2"),
+            text_reply("Há três opções nessa faixa"),
+        )
+        agent = build_agent(model, self.database, self.manual)
+        agent.reply("Quais as opções de violão até 2000 reais?")
+        self.assertEqual(agent.reply("Existe alguma opção entre 1500 e 2000 reais?"), "Há três opções nessa faixa")
+        data = json.loads(model.requests[3][0][-1].content)["data"]
+        self.assertEqual(data["total_count"], 3)
+        self.assertEqual([product["product_id"] for product in data["products"]], [111, 114, 104])
 
     def test_product_details_and_payment_tools(self):
         details = self.run_tool("get_product_details", {"product_id": 81})
@@ -92,6 +125,10 @@ class AgentToolsIntegrationTests(unittest.TestCase):
             ("search_products", {"max_price_brl": 1000}),
             ("search_products", {"max_price_brl": "abc"}),
             ("search_products", {"max_price_brl": "NaN"}),
+            ("search_products", {"min_price_brl": "NaN"}),
+            ("search_products", {"min_price_brl": "abc"}),
+            ("search_products", {"min_price_brl": "2000", "max_price_brl": "1500"}),
+            ("search_products", {"offset": -1}),
             ("search_policies", {"query": "horario", "limit": 10}),
         ):
             with self.subTest(name=name, arguments=arguments):

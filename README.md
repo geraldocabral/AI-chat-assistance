@@ -3,6 +3,97 @@
 Assistente de atendimento em Python para consultar produtos, preços, estoque,
 promoções, pedidos e políticas de uma loja fictícia de instrumentos musicais.
 
+## Como executar
+
+Requisitos: Python 3.11 ou superior, Git, conexão com a internet e uma chave
+da API do Gemini. Os comandos abaixo utilizam PowerShell no Windows.
+
+### 1. Clonar o repositório
+
+```powershell
+git clone https://github.com/geraldocabral/AI-chat-assistance.git
+cd AI-chat-assistance
+```
+
+Se já tiver o projeto, abra o terminal na pasta que contém `pyproject.toml`.
+Execute os próximos comandos nessa pasta.
+
+### 2. Criar o ambiente e instalar as dependências
+
+```powershell
+python -m venv .venv
+.venv\Scripts\python.exe -m pip install -e .
+```
+
+Não é necessário ativar o ambiente: os comandos usam diretamente seu executável Python.
+
+### 3. Configurar a chave do Gemini
+
+Obtenha uma chave no [Google AI Studio](https://aistudio.google.com/apikey).
+Crie o arquivo local de configuração, caso ainda não exista:
+
+```powershell
+if (-not (Test-Path .env)) { Copy-Item .env.example .env }
+```
+
+Abra `.env` em um editor e preencha `GEMINI_API_KEY`:
+
+```dotenv
+GEMINI_API_KEY=sua_chave_aqui
+GEMINI_MODEL=gemini-3.5-flash-lite
+LLM_TIMEOUT_SECONDS=30
+LLM_MAX_OUTPUT_TOKENS=2048
+```
+
+O arquivo `.env` está ignorado pelo Git. Não coloque a chave no `.env.example`.
+Variáveis já definidas no ambiente têm prioridade sobre os valores do arquivo.
+
+### 4. Iniciar o chat no navegador
+
+```powershell
+.venv\Scripts\python.exe -m emporio_agent.interfaces.chat.web
+```
+
+Abra [http://127.0.0.1:5000](http://127.0.0.1:5000) e mantenha o terminal aberto.
+O banco SQLite é criado automaticamente no primeiro uso a partir dos CSVs em
+`data/`. Não é necessário instalar um servidor de banco de dados.
+
+Para testar pedidos, selecione um cliente em **Sessão de teste**. Por exemplo,
+o cliente 3 possui o pedido 1. A seleção inicia uma conversa com identidade
+simulada; não representa autenticação real. **Nova conversa** limpa o histórico.
+Para encerrar o servidor, pressione `Ctrl+C` no terminal.
+
+Se a porta 5000 estiver ocupada, escolha outra:
+
+```powershell
+.venv\Scripts\python.exe -m emporio_agent.interfaces.chat.web --port 5001
+```
+
+Nesse caso, abra [http://127.0.0.1:5001](http://127.0.0.1:5001).
+
+### Alternativa: chat no terminal
+
+```powershell
+.venv\Scripts\python.exe -m emporio_agent
+```
+
+Para iniciar com um cliente simulado:
+
+```powershell
+.venv\Scripts\python.exe -m emporio_agent --customer-id 3
+```
+
+Comandos do chat: `/ajuda`, `/limpar` e `/sair`. As duas interfaces aceitam
+`--verbose` para exibir métricas de execução.
+
+### Executar os testes
+
+```powershell
+.venv\Scripts\python.exe -m unittest discover -s tests -v
+```
+
+Os testes usam respostas simuladas do modelo e não exigem chave ou acesso à API.
+
 ## Arquitetura
 
 O projeto utiliza **Clean Architecture em uma única aplicação Python**, com
@@ -35,6 +126,15 @@ Valores monetários são tratados com `Decimal` e armazenados em centavos inteir
 para evitar imprecisões. A importação usa uma transação para preservar o banco
 anterior caso ocorra uma falha. O banco é gerado localmente e fica fora do Git,
 pois pode ser recriado a partir dos CSVs.
+
+A busca de produtos aceita preço mínimo e máximo inclusivos, aplicados antes
+da paginação. Retorna o total exato, a indicação de mais resultados e a posição
+da próxima página. O limite padrão de cinco itens por chamada reduz o contexto
+enviado ao modelo, sem restringir o acesso ao restante do catálogo.
+Perguntas com novos filtros exigem nova consulta, começando pela primeira página.
+A busca considera preço de tabela; promoções e PIX são calculados separadamente.
+Nomes são buscados por trecho literal, e categorias pelo nome completo, ignorando
+caixa e acentos. Correção de grafia e busca semântica de produtos não estão implementadas.
 
 ## Regras de pagamento
 
@@ -117,12 +217,21 @@ quando informado pelo provedor, sem conteúdo de mensagens ou resultados.
 
 ## Interface
 
-A interface inicial é um chat no terminal. Essa escolha permite demonstrar o
-atendimento e o contexto de conversa com poucas dependências. A sessão começa
-anônima; um cliente de demonstração pode ser selecionado explicitamente na
-inicialização, sem permitir troca de identidade por mensagem ao agente.
+A aplicação oferece chat no terminal e uma página local com Flask, HTML, CSS e
+JavaScript. A interface web reutiliza os mesmos casos de uso e o mesmo agente,
+mantendo a chave e as chamadas ao Gemini no servidor. Essa escolha facilita
+testes manuais sem adicionar um framework de frontend ou uma etapa de compilação.
+
+Cada sessão começa anônima. Na página, selecionar um cliente de demonstração
+inicia uma nova conversa com identidade simulada. Essa seleção é uma função
+local de teste e não representa autenticação. O agente não pode trocar o
+cliente por meio de mensagens ou parâmetros da ferramenta de pedidos.
 
 O chat permite reiniciar o histórico e encerrar o atendimento. A configuração
 local pode ser carregada de `.env` com `python-dotenv`, preservando variáveis já
 definidas no ambiente. O banco é gerado a partir dos CSVs somente se ainda não
 existir; as execuções seguintes não reimportam os dados automaticamente.
+O servidor web escuta apenas em `127.0.0.1`, sem modo de depuração, e processa
+uma requisição por vez. Históricos ficam em memória, separados por sessão,
+limitados a seis turnos e até 32 sessões recentes. Reiniciar o servidor perde
+esses históricos; o servidor é destinado à demonstração local.

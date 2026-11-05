@@ -59,10 +59,12 @@ class AgentTools:
         self._search_products = search_products
         product_id = {"product_id": {"type": "integer", "description": "Identificador obtido no catálogo"}}
         definitions = (
-            _definition("search_products", "Busca por trecho do nome e categoria exata; preço de tabela, sem desconto. Retorna até limit resultados, disponíveis por padrão.", {
+            _definition("search_products", "Busca TODO o catálogo por trecho do nome, categoria exata e faixa inclusiva de preço de tabela, antes de paginar. Retorna total_count, has_more e next_offset. Para outras opções mantenha os filtros e use next_offset; ao mudar filtros reinicie offset=0. Disponíveis por padrão.", {
                 "name": {"type": "string"}, "category": {"type": "string"},
                 "max_price_brl": {"type": "string", "description": "Valor decimal em reais, ex.: 1000.00"},
+                "min_price_brl": {"type": "string", "description": "Preço mínimo inclusivo em reais. Para entre 1500 e 2000, use min=1500 e max=2000."},
                 "available_only": {"type": "boolean"}, "limit": {"type": "integer"},
+                "offset": {"type": "integer", "description": "Posição inicial, padrão 0. Use next_offset para a próxima página dos mesmos filtros."},
             }),
             _definition("get_product_details", "Consulta especificações, estoque, status e promoções ativas, incluindo produtos indisponíveis.", product_id, ("product_id",)),
             _definition("get_payment_options", "Calcula preço promocional, PIX e parcelas de uma unidade disponível; não inclui frete.", product_id, ("product_id",)),
@@ -84,16 +86,21 @@ class AgentTools:
         return tuple(definition for definition, _ in self._tools.values())
 
     def _search(self, **arguments):
-        price = arguments.get("max_price_brl")
-        if price is not None:
-            try:
-                arguments["max_price_brl"] = Decimal(price)
-            except InvalidOperation:
-                raise ValueError("max_price_brl: informe um valor decimal") from None
+        for field in ("min_price_brl", "max_price_brl"):
+            price = arguments.get(field)
+            if price is not None:
+                try:
+                    arguments[field] = Decimal(price)
+                except InvalidOperation:
+                    raise ValueError(f"{field}: informe um valor decimal") from None
         arguments.setdefault("limit", 5)
         filters = ProductSearch(**arguments)
         results = self._search_products.execute(filters)
-        return {"products": results, "returned_count": len(results), "may_have_more": len(results) == filters.limit}
+        return {
+            "products": results.products, "returned_count": len(results.products),
+            "total_count": results.total_count, "offset": results.offset, "limit": results.limit,
+            "has_more": results.has_more, "next_offset": results.next_offset,
+        }
 
     def execute(self, call: ToolCall) -> str:
         tool = self._tools.get(call.name)

@@ -7,10 +7,14 @@ name = "emporio-da-musica-agent"
 version = "0.1.0"
 description = "Protótipo de assistente de atendimento da Empório da Música."
 requires-python = ">=3.11"
-dependencies = ["pypdf>=6.10,<7", "python-dotenv>=1.0,<2"]
+dependencies = ["pypdf>=6.10,<7", "python-dotenv>=1.0,<2", "flask>=3.1,<4"]
 
 [project.scripts]
 emporio-chat = "emporio_agent.interfaces.chat.cli:main"
+emporio-web = "emporio_agent.interfaces.chat.web:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+"emporio_agent.interfaces.chat" = ["templates/*.html", "static/*.css", "static/*.js"]

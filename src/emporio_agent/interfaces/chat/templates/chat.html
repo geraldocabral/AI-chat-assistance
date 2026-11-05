@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Empório da Música · Atendimento</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='chat.css') }}">
+  <script src="{{ url_for('static', filename='chat.js') }}" defer></script>
+</head>
+<body>
+  <main class="app">
+    <header class="header">
+      <div class="brand"><span class="brand-icon" aria-hidden="true">♪</span><div><strong>Empório da Música</strong><span>Sua música começa aqui.</span></div></div>
+      <button id="clear" class="secondary" type="button">Nova conversa</button>
+    </header>
+    <div class="session-bar">
+      <label for="customer">Sessão de teste</label>
+      <select id="customer" disabled><option value="">Anônima</option></select>
+      <span id="session-note">Sem acesso a pedidos</span>
+    </div>
+    <section id="conversation" class="conversation" aria-label="Conversa com o assistente" aria-live="polite" aria-relevant="additions">
+      <div id="welcome" class="welcome">
+        <span class="eyebrow">ATENDIMENTO VIRTUAL</span>
+        <h1>Qual é o seu próximo som?</h1>
+        <p>Encontre seu instrumento ou tire dúvidas sobre<br class="desktop"> pagamentos, entregas e pedidos.</p>
+        <div class="suggestions">
+          <button type="button" data-prompt="Quais violões disponíveis custam até R$ 1000?"><span>01</span>Encontrar um instrumento<small>Violões até R$ 1.000</small></button>
+          <button type="button" data-prompt="Quais são as condições de pagamento no PIX e no cartão?"><span>02</span>Ver formas de pagamento<small>PIX, cartão e parcelamento</small></button>
+          <button type="button" data-prompt="Me arrependi da minha compra online. Como funciona a devolução?"><span>03</span>Tirar uma dúvida<small>Trocas e devoluções</small></button>
+        </div>
+      </div>
+      <div id="messages"></div>
+    </section>
+    <footer class="composer-area">
+      <p id="status" role="status"></p>
+      <form id="composer">
+        <label class="sr-only" for="message">Sua mensagem</label>
+        <textarea id="message" rows="2" maxlength="4000" placeholder="Escreva sua mensagem…" required disabled></textarea>
+        <button id="send" type="submit" aria-label="Enviar mensagem" disabled>Enviar <span aria-hidden="true">↗</span></button>
+      </form>
+      <div class="footnote"><span>Enter envia · Shift + Enter quebra a linha</span><span>Demonstração com dados fictícios</span></div>
+    </footer>
+  </main>
+</body>
+</html>
