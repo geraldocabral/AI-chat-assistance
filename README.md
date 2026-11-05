@@ -95,3 +95,21 @@ Referências: [compatibilidade da API](https://ai.google.dev/gemini-api/docs/ope
 e [limites](https://ai.google.dev/gemini-api/docs/rate-limits).
 A qualidade das respostas e as chamadas reais ainda precisam ser validadas
 com uma chave local; testes simulados verificam o contrato da integração.
+
+## Fluxo de atendimento
+
+O agente recebe a mensagem, solicita ferramentas e usa seus resultados para
+formular a resposta. Somente as cinco consultas implementadas são permitidas,
+com validação local de parâmetros. Consultas de pedidos usam a identidade da
+sessão, sem aceitar um cliente escolhido pelo modelo.
+
+Cada mensagem permite até quatro chamadas ao modelo e oito chamadas de
+ferramentas. O histórico mantém os seis últimos turnos completos em memória,
+sem persistência entre reinicializações. Falhas e limites encerram o fluxo com
+uma resposta de indisponibilidade, preservando um histórico válido.
+
+As instruções definem persona, uso de fontes, escopo e tratamento de informações
+ausentes. Essas instruções orientam o modelo, mas a aderência precisa ser
+avaliada com conversas reais. Os testes atuais verificam a orquestração usando
+um modelo simulado. Logs registram duração, ferramentas e consumo de tokens
+quando informado pelo provedor, sem conteúdo de mensagens ou resultados.
